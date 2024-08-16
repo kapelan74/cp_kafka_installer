@@ -1,0 +1,62 @@
+---
+- name: Start docker service
+  systemd:
+    state: started
+    name: docker.service
+
+- name: Stop docker container
+  command:
+    cmd: "bash -ilc 'docker stop $(docker ps -a -q)'"
+  register: docker_container_stop
+  ignore_errors: yes
+
+- name: Docker container status
+  debug:
+    var: docker_container_stop.stderr_lines
+
+- name: Remove docker container
+  command:
+    cmd: "bash -ilc 'docker rm $(docker ps -a -q)'"
+  register: docker_container_rm
+  ignore_errors: yes
+
+- name: Remove container status
+  debug:
+    var: docker_container_rm.stderr_lines
+
+- name: Remove directory
+  file:
+    state: absent
+    path: "{{ item.path }}"
+  with_items:
+    - path: "{{ work_dir }}/kafka"
+    - path: "{{ work_dir }}/zookeeper"
+
+- name: Remove docker artifact
+  command:
+    cmd: "bash -ilc 'docker {{ item.name }} prune -f'"
+  with_items:
+    - name: "container"
+    - name: "network"
+    - name: "volume"
+  register: docker_af_rm
+  ignore_errors: yes
+
+- name: Remove docker artifact status
+  debug:
+    var: docker_af_rm.stderr_lines
+
+- name: Remove docker images
+  command:
+    cmd: "bash -ilc 'docker image rm $(docker image ls -q)'"
+  register: docker_im_rm
+  ignore_errors: yes
+
+- name: Remove docker images status
+  debug:
+    var: docker_im_rm.stderr_lines
+
+- name: Stop docker service
+  systemd:
+    state: stopped
+    name: docker.service

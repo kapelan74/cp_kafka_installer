@@ -1,0 +1,30 @@
+---
+- name: install-kafka
+  tags: kafka
+  block:
+  - name: Create zookeeper & kafka directory
+    file:
+      state: directory
+      path: "{{ item.path }}"
+      mode: "777"
+    with_items:
+      - path: "{{ work_dir }}/zookeeper/data"
+      - path: "{{ work_dir }}/zookeeper/log"
+      - path: "{{ work_dir }}/kafka/data/"
+
+  - name: Copy Template
+    template:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        mode: "777"
+    with_items:
+      - { src: "docker-compose.yml.j2", dest: "{{ work_dir }}/kafka/docker-compose.yml" }
+
+  - name: Run docker compose
+    command:
+      cmd: "bash -ilc 'docker-compose -f {{ work_dir }}/kafka/docker-compose.yml up -d'"
+    register: docker_compose_up
+
+  - name: Docker compose status
+    debug:
+      var: docker_compose_up.stderr_lines

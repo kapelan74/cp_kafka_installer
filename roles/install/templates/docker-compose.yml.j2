@@ -1,0 +1,93 @@
+---
+version: '2.2'
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:{{ version }}
+    container_name: zookeeper
+    restart: always
+    networks:
+      - kafka
+    ports:
+      - {{ zookeeper_work_port }}:2181
+      - {{ zookeeper_replicate_port1 }}:2888
+      - {{ zookeeper_replicate_port2 }}:3888
+      - {{ zookeeper_admin_serverPort }}:8080
+    environment:
+      ZOOKEEPER_SERVER_ID: {{ server_id }}
+      ZOOKEEPER_CLIENT_PORT: {{ zookeeper_work_port }}
+      ZOOKEEPER_INIT_LIMIT: 5
+      ZOOKEEPER_SYNC_LIMIT: 2
+      ZOOKEEPER_AUTOPURGE_PURGEINTERVAL: 1
+      ZOOKEEPER_SERVERS: {{ zookeper_connection_string }}
+      KAFKA_OPTS: "-Dzookeeper.4lw.commands.whitelist=* -Djava.net.preferIPv4Stack=true -Duser.timezone=Europe/Moscow"
+    volumes:
+      - {{ work_dir }}/zookeeper/data:/var/lib/zookeeper/data
+      - {{ work_dir }}/zookeeper/log:/var/lib/zookeeper/log
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
+
+  kafka:
+    image: confluentinc/cp-kafka:{{ version }}
+    container_name: kafka
+    restart: always
+    depends_on:
+      - zookeeper
+    networks:
+      - kafka
+    ports:
+      - {{ kafka_clients_port }}:{{ kafka_clients_port }}
+    environment:
+      KAFKA_BROKER_ID: {{ server_id }}
+      KAFKA_ZOOKEEPER_CONNECT: {{ zookeper_bootstrap_connection_string }} 
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://{{ inventory_hostname }}:{{ kafka_clients_port }}
+{% if ansible_play_hosts | length == 1 %}
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1" 
+      KAFKA_DEFAULT_REPLICATION_FACTOR: "1" # фактор репликации по-умолчанию для создаваемых топиков
+      KAFKA_NUM_PARTITIONS: "1" # количество партиций по-умолчанию для создаваемых топиков
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_AUTO_LEADER_REBALANCE_ENABLE: "false"
+{% else %}
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "{{ ansible_play_hosts | length }}" 
+      KAFKA_DEFAULT_REPLICATION_FACTOR: "{{ ansible_play_hosts | length }}" # фактор репликации по-умолчанию для создаваемых топиков
+      KAFKA_NUM_PARTITIONS: "{{ ansible_play_hosts | length }}" # количество партиций по-умолчанию для создаваемых топиков
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "{{ ansible_play_hosts | length }}"
+      KAFKA_AUTO_LEADER_REBALANCE_ENABLE: "true"
+{% endif %}  
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: "0"
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+      KAFKA_LOG_RETENTION_HOURS: "168"
+      KAFKA_LOG_SEGMENT_BYTES: "52428800"
+      KAFKA_LOG_RETENTION_BYTES: "1048576000"
+      KAFKA_OPTS: "-Djava.net.preferIPv4Stack=true -Duser.timezone=Europe/Moscow"
+      KAFKA_HEAP_OPTS: "-Xms{{ kafka_xms }} -Xmx{{ kafka_xmx }}"
+    volumes:
+      - {{ work_dir }}/kafka/data:/var/lib/kafka/data
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
+
+{% if ui_enabled == "true" %}
+  kafka-ui:
+    container_name: kafka-ui
+    image: provectuslabs/kafka-ui:latest
+    restart: always
+    depends_on:
+      - zookeeper
+      - kafka
+    networks:
+      - kafka
+    ports:
+      - {{ kafka_ui_port }}:8080
+    environment:
+      KAFKA_CLUSTERS_0_NAME: {{ cluster_name }}
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: {{ inventory_hostname }}:{{ kafka_clients_port }}
+{% endif %}
+
+networks:
+  kafka:
+      driver: bridge

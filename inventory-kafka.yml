@@ -1,0 +1,16 @@
+all:
+  hosts:
+    192.168.1.228:
+      server_id: "1"
+      ui_enabled: "true"
+    192.168.1.227:
+      server_id: "2"
+      ui_enabled: "false"
+    192.168.1.226:
+      server_id: "3"
+      ui_enabled: "false"
+
+  vars:
+    work_dir: "/opt"
+    version: "7.7.0"
+    cluster_name: "kafka-cluster"

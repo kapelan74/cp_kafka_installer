@@ -1,0 +1,34 @@
+---
+- name: install-docker
+  tags: docker
+  block:
+  - name: Check docker version
+    shell: 
+      cmd: docker --version
+    register: docker_version_check
+    ignore_errors: yes
+
+  - name: Show docker version
+    debug:
+      var: docker_version_check.stdout
+
+  - block:
+    - name: Install Docker, docker-compose
+      package: 
+        name: "{{ item.name }}"
+        state: present
+      with_items:
+        - name: docker
+        - name: docker-bash-completion
+        - name: python3-docker-compose
+      ignore_errors: yes
+      become: true
+
+    - name: Enable and start Docker service 
+      service: 
+        name: docker
+        daemon_reload: yes
+        state: started
+        enabled: yes
+
+    when: docker_version_check.stdout == ""

@@ -1,0 +1,17 @@
+---
+# defaults zookeeper parameters
+zookeeper_work_port: "2181"
+zookeeper_admin_serverPort: "8080"
+zookeeper_replicate_port1: "2888"
+zookeeper_replicate_port2: "3888"
+zookeeper_ports_connections_string: "{{zookeeper_replicate_port1}}:{{zookeeper_replicate_port2}}"
+zookeper_connection_string: "{{ groups['all'] | map('extract',hostvars,'inventory_hostname') |list| product([zookeeper_ports_connections_string])| map('join', ':') | join(';') | replace (inventory_hostname, '0.0.0.0') }}"
+zookeper_bootstrap_connection_string: "{{ groups['all'] | map('extract',hostvars,'inventory_hostname') |list| product([zookeeper_work_port])| map('join', ':') | join(',') }}"
+
+# defaults kafka parameters
+kafka_clients_port: "9092"
+kafka_xmx: "1G"
+kafka_xms: "1G"
+
+# defaults kafka-ui parameters
+kafka_ui_port: "8081"

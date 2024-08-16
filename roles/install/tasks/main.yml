@@ -1,0 +1,17 @@
+---
+- name: Install Kafka
+  block:
+  # PreInstall
+  - name: config-sysctl
+    include_tasks: config-sysctl.yml
+    tags: preinstall
+
+  # Install Docker
+  - name: install-docker
+    include_tasks: install-docker.yml
+    tags: docker
+
+  # Install Kafka
+  - name: install-kafka
+    include_tasks: install-kafka.yml
+    tags: kafka
